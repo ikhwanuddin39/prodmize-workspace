@@ -9,8 +9,6 @@ import {
 } from '@angular/ssr/node';
 import express from 'express';
 import { join } from 'node:path';
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
@@ -19,16 +17,17 @@ app.use(cors());
 app.set('view engine', 'html');
 const angularApp = new AngularNodeAppEngine();
 
-// Init federation only in production (when dist folder exists)
-const prodManifest = resolve('dist/shell/browser/federation.manifest.json');
-const federationReady: Promise<void> = existsSync(prodManifest)
-  ? import('@softarc/native-federation-node').then(({ initNodeFederation }) =>
-    initNodeFederation({
-      remotesOrManifestUrl: prodManifest,
-      relBundlePath: 'dist/shell/browser/',
-    })
-  )
-  : Promise.resolve();
+/**
+ * Example Express Rest API endpoints can be defined here.
+ * Uncomment and define endpoints as necessary.
+ *
+ * Example:
+ * ```ts
+ * app.get('/api/{*splat}', (req, res) => {
+ *   // Handle API request
+ * });
+ * ```
+ */
 
 /**
  * Serve static files from /browser
@@ -44,8 +43,7 @@ app.use(
 /**
  * Handle all other requests by rendering the Angular application.
  */
-app.use(async (req, res, next) => {
-  await federationReady;
+app.use((req, res, next) => {
   angularApp
     .handle(req)
     .then((response) =>
@@ -56,6 +54,7 @@ app.use(async (req, res, next) => {
 
 /**
  * Start the server if this module is the main entry point, or it is ran via PM2.
+ * The server listens on the port defined by the `PORT` environment variable, or defaults to 4000.
  */
 if (isMainModule(import.meta.url) || process.env['pm_id']) {
   const port = process.env['PORT'] || 4200;
@@ -63,12 +62,12 @@ if (isMainModule(import.meta.url) || process.env['pm_id']) {
     if (error) {
       throw error;
     }
+
     console.log(`Node Express server listening on http://localhost:${port}`);
   });
 }
 
 /**
- * The request handler used by the Angular CLI (dev-server and during build).
- * THIS IS REQUIRED for ng serve to use this handler instead of its internal middleware.
+ * Request handler used by the Angular CLI (for dev-server and during build) or Firebase Cloud Functions.
  */
 export const reqHandler = createNodeRequestHandler(app);
